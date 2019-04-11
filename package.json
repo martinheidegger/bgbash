@@ -24,5 +24,16 @@
     "@types/node": "^11.13.4",
     "standard": "^12.0.1",
     "tap": "^12.6.1"
-  }
+  },
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/martinheidegger/bgbash.git"
+  },
+  "bugs": {
+    "url": "https://github.com/martinheidegger/bgbash/issues"
+  },
+  "homepage": "https://github.com/martinheidegger/bgbash#readme"
 }
