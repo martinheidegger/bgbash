@@ -114,9 +114,44 @@ test('cb > exec', async t => {
 })
 
 test('cb > closing', t => {
-  closeCb(() => {
-    t.end()
+  execCb('echo hi', err => {
+    t.equals(err, null)
+    closeCb(() => {
+      t.end()
+    })
   })
+})
+
+test('parallel closing', async t => {
+  await Promise.all([
+    close(),
+    close()
+  ])
+  t.pass('both done')
+})
+
+test('closing while the process is killed', async t => {
+  await exec('echo hi') // starting a process
+  const id = pid()
+  let errThrown
+  await Promise.all([
+    exec('while true; do sleep 1; done').catch(err => {
+      errThrown = err
+    }),
+    close(),
+    new Promise((resolve, reject) => setImmediate(() => {
+      try {
+        process.kill(id)
+        resolve()
+      } catch (err) {
+        reject(err)
+      }
+    }))
+  ])
+  t.notEquals(errThrown, null)
+  if (errThrown) {
+    t.equals(errThrown.code, 'EDIED')
+  }
 })
 
 test('killing the process should run', async t => {
