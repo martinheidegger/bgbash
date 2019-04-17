@@ -7,7 +7,7 @@
     "test": "npm run test:lint && npm run test:unit && npm run test:perf",
     "test:unit": "tap test.js",
     "test:lint": "standard",
-    "test:perf": "./perf.js",
+    "test:perf": "node --expose-gc ./perf.js",
     "test:ci": "npm run test:lint && npm run test:perf && npm run test:unit -- --cov --coverage-report=lcov",
     "release": "standard-version"
   },
