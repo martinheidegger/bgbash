@@ -125,8 +125,8 @@ class BashProcess extends ChildProcess {
   constructor (envPairs, destruct) {
     super()
     this.spawn({
-      file: `/bin/bash`,
-      args: [`${__dirname}${sep}index.sh`],
+      file: 'bash',
+      args: ['-i', `${__dirname}${sep}index.sh`],
       envPairs
     })
     this._destruct = once(() => {
