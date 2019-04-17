@@ -65,6 +65,19 @@ test('custom env variable', async t => {
   t.deepEquals(await exec('echo A: $A; echo "B: $B"', { env }), out('A: x\nB: '))
 })
 
+test('env pairs variable', async t => {
+  const env = { ...process.env, A: 'x', B: undefined }
+  const envPairs = []
+  for (const key in env) {
+    const value = env[key]
+    if (value === undefined) {
+      continue
+    }
+    envPairs.push(`${key}=${env[key]}`)
+  }
+  t.deepEquals(await exec('echo A: $A; echo "B: $B"', { envPairs }), out('A: x\nB: '))
+})
+
 test('Given NODE_V8_COVERAGE env variable', async t => {
   const env = { ...process.env, NODE_V8_COVERAGE: 'a' }
   t.deepEquals(await exec('echo $NODE_V8_COVERAGE', { env }), out('a'))

@@ -5,6 +5,7 @@ type cb = (error: Error | null, stdout: out, stderr: out) => void
 export interface Opts {
   encoding?: string
   timeout?: number
+  envPairs?: string[]
   env?: Environment
   cwd?: string
 }

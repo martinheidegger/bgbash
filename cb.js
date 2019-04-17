@@ -189,10 +189,9 @@ class BashProcess extends ChildProcess {
 
 function noop () {}
 
-function _exec (cmd, cwd, env, encoding, timeout, cb) {
+function _exec (cmd, cwd, envPairs, encoding, timeout, cb) {
   cb = cb || noop
   assert.strictEqual(typeof cb, 'function', 'callback is of the wrong type')
-  const envPairs = createEnvPairs(env)
   const hash = JSON.stringify(envPairs)
   let proc = procByEnv[hash]
   if (proc === undefined) {
@@ -208,13 +207,17 @@ function _exec (cmd, cwd, env, encoding, timeout, cb) {
 let procByEnv = {}
 
 function exec (cmd, opts, cb) {
+  let envPairs = opts && opts.envPairs
+  if (!envPairs) {
+    envPairs = createEnvPairs((opts && opts.env) || process.env)
+  }
   if (typeof opts === 'function') {
-    return _exec(cmd, null, null, undefined, 0, opts)
+    return _exec(cmd, null, envPairs, undefined, 0, opts)
   }
   if (opts === null || opts === undefined) {
-    return _exec(cmd, null, null, undefined, 0, cb)
+    return _exec(cmd, null, envPairs, undefined, 0, cb)
   }
-  return _exec(cmd, opts.cwd, opts.env || null, opts.encoding, opts.timeout || 0, cb)
+  return _exec(cmd, opts.cwd, envPairs, opts.encoding, opts.timeout || 0, cb)
 }
 
 function close (cb) {
