@@ -21,13 +21,13 @@ The startup time is naturally accompanied with some overheads but repeat calls a
 
 | "echo hi" - 500 runs | node.js | bgback |   |h
 |---------------|---------|--------|---|
-| startup       | 11.1ms | 22.2ms | 100% slower |
-| repeat call   | 8.2ms | 7.6ms | 7% faster |
-| cpu.user      | 9.3ms | 8.7ms | 6% faster |
-| cpu.system    | 1.8ms | 0.5ms | 72% faster |
-| mem.rss       | 23.5Mb (+1.4Mb/-2.9Mb) | 24.9Mb (+225.4Kb/-374.6Kb) | |
-| mem.heapTotal | 14.5Mb (+1.7Mb/-4.8Mb) | 15.2Mb (+511Kb/-1Kb) | |
-| mem.heapUsed  | 3.9Mb (+248.7Kb/-333Kb) | 4.1Mb (+92Kb/-180.7Kb) | |
+| startup       | 13.9ms | 21.4ms | 54% slower |
+| repeat call   | 9.7ms | 9ms | 7% faster |
+| cpu.user      | 9.8ms | 9.5ms | 3% faster |
+| cpu.system    | 2ms | 0.6ms | 72% faster |
+| mem.rss       | 23.7Mb (+1.3Mb/-3.1Mb) | 25.3Mb (+43Kb/-285Kb) | |
+| mem.heapTotal | 15.1Mb (+1.1Mb/-5.4Mb) | 16.2Mb (+0b/-0b) | |
+| mem.heapUsed  | 3.9Mb (+248.7Kb/-334.3Kb) | 4Mb (+83.9Kb/-174Kb) | |
 | mem.external  | 8.2Kb (+8Kb/-66b) | 8.1Kb (+65b/-5b) | |
 
 _Note:_ This data is compiled using the [`./perf.js`](./perf.js) script.
