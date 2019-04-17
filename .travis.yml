@@ -9,17 +9,21 @@ node_js:
   - "10"
   - "8"
 before_script:
-  - echo $TRAVIS_OS_NAME
+  - which bash
   - >
-      if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then \
-        curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter \
-        chmod +x ./cc-test-reporter \
-        ./cc-test-reporter before-build \
+      if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+        curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+        chmod +x ./cc-test-reporter
+        ./cc-test-reporter before-build
       fi
 script:
   - npm run test:ci
 after_script:
   - >
-      if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then \
-        ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT \
+      if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+        ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
       fi
+jobs:
+  include:
+    - os: windows
+      filter_secrets: false
