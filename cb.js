@@ -82,14 +82,22 @@ function track (proc, errPath, timeout, cb) {
 function collectErrOut (proc, cb) {
   let out = ''
   proc.stdout.on('data', ondata)
+  proc.stderr.on('data', onerr)
 
   function ondata (chunk) {
     out += chunk.toString()
     const line = out.indexOf('\n')
     if (line >= 0) {
       proc.stdout.removeListener('data', ondata)
+      proc.stderr.removeListener('data', onerr)
       cb(null, out.substr(0, line))
     }
+  }
+
+  function onerr (chunk) {
+    proc.stdout.removeListener('data', ondata)
+    proc.stderr.removeListener('data', onerr)
+    cb(new Error('Unexpected error output: ' + chunk.toString()))
   }
 }
 
