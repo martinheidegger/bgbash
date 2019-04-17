@@ -8,7 +8,7 @@
     "test:unit": "tap test.js",
     "test:lint": "standard",
     "test:perf": "./perf.js",
-    "ci": "npm run test:lint && npm run test:perf && npm run test:unit -- --cov --coverage-report=lcov",
+    "test:ci": "npm run test:lint && npm run test:perf && npm run test:unit -- --cov --coverage-report=lcov",
     "release": "standard-version"
   },
   "keywords": [
