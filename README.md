@@ -2,8 +2,8 @@
 
 [![Build Status](https://travis-ci.org/martinheidegger/bgbash.svg?branch=master)](https://travis-ci.org/martinheidegger/bgbash)
 [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
-[![Maintainability](https://api.codeclimate.com/v1/badges/0515ec5a0831b36b5992/maintainability)](https://codeclimate.com/github/martinheidegger/bgbash/maintainability)
-[![Test Coverage](https://api.codeclimate.com/v1/badges/0515ec5a0831b36b5992/test_coverage)](https://codeclimate.com/github/martinheidegger/bgbash/test_coverage)
+[![Maintainability](https://api.codeclimate.com/v1/badges/c1234051f29f448e3a40/maintainability)](https://codeclimate.com/github/martinheidegger/bgbash/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/c1234051f29f448e3a40/test_coverage)](https://codeclimate.com/github/martinheidegger/bgbash/test_coverage)
 
 `bgbash` is a partial drop-in replacement for [`require('child_process').exec`][exec] specifically made for long-running applications.
 
