@@ -79,11 +79,11 @@ or `require('bgbash/promises')`.
 
 ```javascript
 const { exec } = require('bgbash').promises
-const opts = { /* ... */ }
-const { stdout, stderr } = await exec('echo hi')
+const opts = { /* Same options as above. */ }
+const { stdout, stderr } = await exec('echo hi', opts)
 
 try {
-  await exec('exit 1')
+  await exec('exit 1', opts)
 } catch (error) {
   // Error that happened.
 }
