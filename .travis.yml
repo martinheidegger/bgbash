@@ -11,11 +11,6 @@ before_script:
   - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
   - chmod +x ./cc-test-reporter
   - ./cc-test-reporter before-build
-  - >
-    node_version=$(node -v);
-    if  [ ${node_version:1:1} = 4 ]; then
-        npm i tap@11;
-    fi
 script:
   - npm run test:ci
 after_script:
