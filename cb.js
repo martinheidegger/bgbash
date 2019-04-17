@@ -193,7 +193,7 @@ function _exec (cmd, cwd, env, encoding, timeout, cb) {
   cb = cb || noop
   assert.strictEqual(typeof cb, 'function', 'callback is of the wrong type')
   const envPairs = createEnvPairs(env)
-  const hash = envPairs.join('\n')
+  const hash = JSON.stringify(envPairs)
   let proc = procByEnv[hash]
   if (proc === undefined) {
     proc = new BashProcess(envPairs, () => delete procByEnv[hash])
@@ -230,7 +230,7 @@ function close (cb) {
 
 function pid (env) {
   const envPairs = createEnvPairs(env)
-  const proc = procByEnv[envPairs.join('\n')]
+  const proc = procByEnv[JSON.stringify(envPairs)]
   if (proc === undefined) {
     return null
   }
