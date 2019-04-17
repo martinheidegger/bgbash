@@ -162,11 +162,8 @@ class BashProcess extends ChildProcess {
       }
       this._toggleTracker(true)
       if (result.code !== 0) {
-        err = new Error(result.code === null ? 'Process killed.' : `Exit code: ${result.code}`)
-        err.code = result.code || 'EKILLED'
-        if (result.code === null) {
-          this._destruct()
-        }
+        err = new Error(`Exit code: ${result.code}`)
+        err.code = result.code
       }
       if (encoding === undefined) {
         encoding = 'utf8'
