@@ -129,8 +129,8 @@ class BashProcess extends ChildProcess {
       args: ['bash', '-i', '--noprofile', `${__dirname}${sep}index.sh`],
       envPairs
     })
-    this._destruct = once(() => {
-      this.destructed = true
+    this._destruct = once((err) => {
+      this.destructed = err || new Error('Closed.')
       destruct()
     })
     this.on('close', this._destruct)
@@ -138,7 +138,10 @@ class BashProcess extends ChildProcess {
     this._toggleTracker(false)
     this.lock(unlock => collectErrOut(this, (err, errPath) => {
       if (err) {
-        this._destruct()
+        this._destruct(Object.assign(new Error(`Couldn't receive error file`), {
+          code: err.code,
+          cause: err
+        }))
         return unlock(err)
       }
       this.errPath = errPath
@@ -147,6 +150,9 @@ class BashProcess extends ChildProcess {
   }
   exec (cmd, encoding, timeout, cb) {
     return this.lock(unlock => {
+      if (this.destructed) {
+        return unlock(this.destructed)
+      }
       this._setCurrent(unlock, encoding, timeout)
       this.stdin.write(`${cmd}\n`)
     }, cb)
@@ -165,7 +171,7 @@ class BashProcess extends ChildProcess {
     this._toggleTracker(false)
     track(this, this.errPath, timeout, (err, result) => {
       if (err) {
-        this._destruct()
+        this._destruct(err)
         return unlock(err, null, null)
       }
       this._toggleTracker(true)
