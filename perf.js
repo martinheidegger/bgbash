@@ -144,7 +144,7 @@ async function run (cmd, count) {
   const entries = [a, b]
 
   return `
-| "${cmd}" - ${count} runs |${row(entry => ` ${entry.name} `)}|   |h
+| "${cmd}" - ${count} runs |${row(entry => ` ${entry.name} `)}|   |
 |---------------|${row(entry => `-${new Array(entry.name.length).join('-')}--`)}|---|
 | startup       |${renderTime(entry => entry.first.time)}|
 | repeat call   |${renderTime(entry => entry.repeat.time)}|

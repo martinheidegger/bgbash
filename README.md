@@ -19,7 +19,7 @@ Starting a child process using `spawn` or `exec` will create a new instance of `
 
 The startup time is naturally accompanied with some overheads but repeat calls are up to 70% faster or create 1/3rd of the overhead. It's memory consumption is not significantly less but the memory usage fluctuates less which is a good indicator for fewer garbage-collector cycles and a lower long-term energy consumption.
 
-| "echo hi" - 500 runs | node.js | bgback |   |h
+| "echo hi" - 500 runs | node.js | bgback |   |
 |---------------|---------|--------|---|
 | startup       | 13.9ms | 21.4ms | 54% slower |
 | repeat call   | 9.7ms | 9ms | 7% faster |
