@@ -8,7 +8,7 @@ node_js:
   - "10"
   - "8"
 before_script:
-  - echo $CC_TEST_REPORTER_ID
+  - env
   - >
       if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
         echo "Add code-climate exporter ..."
