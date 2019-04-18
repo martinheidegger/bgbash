@@ -2,7 +2,7 @@
 const { ChildProcess } = require('child_process')
 const { sep, resolve } = require('path')
 const { createLockCb } = require('flexlock-cb')
-const { readFile } = require('fs')
+const { readFile, createWriteStream } = require('fs')
 const once = require('once')
 const assert = require('assert')
 
@@ -79,18 +79,18 @@ function track (proc, errPath, timeout, cb) {
   })
 }
 
-function collectErrOut (proc, cb) {
+function collectIOPath (proc, cb) {
   let out = ''
   proc.stdout.on('data', ondata)
   proc.stderr.on('data', onerr)
 
   function ondata (chunk) {
     out += chunk.toString()
-    const line = out.indexOf('\n')
-    if (line >= 0) {
+    const lines = out.split('\n')
+    if (lines.length > 2) {
       proc.stdout.removeListener('data', ondata)
       proc.stderr.removeListener('data', onerr)
-      cb(null, out.substr(0, line))
+      cb(null, { errPath: lines[0], inPath: lines[1] })
     }
   }
 
@@ -127,7 +127,8 @@ class BashProcess extends ChildProcess {
     this.spawn({
       file: 'bash',
       args: ['/bin/bash', '--noprofile', `${__dirname}${sep}index.sh`],
-      envPairs
+      envPairs,
+      stdio: ['ignore', 'pipe', 'pipe']
     })
     this._destruct = once((err) => {
       this.destructed = err || new Error('Closed.')
@@ -136,7 +137,7 @@ class BashProcess extends ChildProcess {
     this.on('close', this._destruct)
     this.lock = createLockCb()
     this._toggleTracker(false)
-    this.lock(unlock => collectErrOut(this, (err, errPath) => {
+    this.lock(unlock => collectIOPath(this, (err, paths) => {
       if (err) {
         this._destruct(Object.assign(new Error(`Couldn't receive error file`), {
           code: err.code,
@@ -144,6 +145,9 @@ class BashProcess extends ChildProcess {
         }))
         return unlock(err)
       }
+      const { errPath, inPath } = paths
+      this._stdin = createWriteStream(inPath, { flags: 'a' })
+      this._stdin.on('error', this._destruct)
       this.errPath = errPath
       unlock()
     }), () => {})
@@ -154,7 +158,7 @@ class BashProcess extends ChildProcess {
         return unlock(this.destructed)
       }
       this._setCurrent(unlock, encoding, timeout)
-      this.stdin.write(`${cmd}\n`)
+      this._stdin.write(`${cmd}\n`)
     }, cb)
   }
   close (cb) {
