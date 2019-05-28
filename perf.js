@@ -46,20 +46,21 @@ function avg (tracker, count) {
 }
 
 function createMemTracker () {
+  const start = process.memoryUsage()
   const stats = {
-    rss: { avg: 0, min: Number.MAX_VALUE, max: Number.MIN_VALUE },
-    heapTotal: { avg: 0, min: Number.MAX_VALUE, max: Number.MIN_VALUE },
-    heapUsed: { avg: 0, min: Number.MAX_VALUE, max: Number.MIN_VALUE },
-    external: { avg: 0, min: Number.MAX_VALUE, max: Number.MIN_VALUE }
+    rss: { avg: 0, min: Number.MAX_VALUE, max: -Number.MAX_VALUE },
+    heapTotal: { avg: 0, min: Number.MAX_VALUE, max: -Number.MAX_VALUE },
+    heapUsed: { avg: 0, min: Number.MAX_VALUE, max: -Number.MAX_VALUE },
+    external: { avg: 0, min: Number.MAX_VALUE, max: -Number.MAX_VALUE }
   }
   let count = 0
   return {
     track () {
       const usage = process.memoryUsage()
-      minMax(stats.rss, usage.rss)
-      minMax(stats.heapTotal, usage.heapTotal)
-      minMax(stats.heapUsed, usage.heapUsed)
-      minMax(stats.external, usage.external)
+      minMax(stats.rss, usage.rss - start.rss)
+      minMax(stats.heapTotal, usage.heapTotal - start.heapTotal)
+      minMax(stats.heapUsed, usage.heapUsed - start.heapUsed)
+      minMax(stats.external, usage.external - start.external)
       count += 1
     },
     stats () {
@@ -72,9 +73,13 @@ function createMemTracker () {
   }
 }
 
-async function runOne (count, name, once, cleanup) {
+async function clear () {
   global.gc()
-  await sleep(100)
+  await sleep(100) 
+}
+
+async function runOne (count, name, once, cleanup) {
+  await clear()
   const mem = createMemTracker()
   mem.track()
   let end = start()
@@ -135,10 +140,13 @@ function renderBytes (bytes) {
 function renderMemEntry (entry) {
   const diffMax = Math.abs(entry.max - entry.avg)
   const diffMin = Math.abs(entry.avg - entry.min)
-  return `${renderBytes(entry.avg)} (+${renderBytes(diffMax)}/-${renderBytes(diffMin)})`
+  return `${renderBytes(entry.max)}`
 }
 
 async function run (cmd, count) {
+  await runOne(count, 'bgback', () => execBgAsync(cmd), closeAsync)
+  await runOne(count, 'node.js', () => execAsync(cmd))
+
   const a = await runOne(count, 'node.js', () => execAsync(cmd))
   const b = await runOne(count, 'bgback', () => execBgAsync(cmd), closeAsync)
   const entries = [a, b]
