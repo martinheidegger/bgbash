@@ -4,35 +4,7 @@ if (typeof global.gc !== 'function') {
   console.error('Run again as bash script')
   process.exit(1)
 }
-const { exec: execBgAsync, close: closeAsync } = require('./promises.js')
-const { promisify } = require('util')
-const execAsync = promisify(require('child_process').exec)
-
-function start () {
-  const start = process.hrtime()
-  const cpu = process.cpuUsage()
-  return () => {
-    const diff = process.hrtime(start)
-    const cpuMiS = process.cpuUsage(cpu)
-    return {
-      time: diff[0] * 1e3 + diff[1] * 1e-6,
-      cpu: {
-        user: cpuMiS.user / 1000,
-        system: cpuMiS.system / 1000
-      }
-    }
-  }
-}
-
-function devideInfo (info, devider) {
-  return {
-    time: info.time / devider,
-    cpu: {
-      user: info.cpu.user / devider,
-      system: info.cpu.system / devider
-    }
-  }
-}
+const cluster = require('cluster')
 
 function minMax (tracker, value) {
   if (tracker.min > value) tracker.min = value
@@ -40,19 +12,24 @@ function minMax (tracker, value) {
   tracker.avg += value
 }
 
-function avg (tracker, count) {
+function finalMemory (tracker, count, start, end) {
   tracker.avg = tracker.avg / count
   tracker.diff = tracker.max - tracker.min
+  tracker.final = end - start
+}
+
+function initMemoryValue () {
+  return { min: Number.MAX_VALUE, max: -Number.MAX_VALUE, avg: 0, final: 0, diff: 0 }
 }
 
 function createMemTracker () {
-  const start = process.memoryUsage()
   const stats = {
-    rss: { avg: 0, min: Number.MAX_VALUE, max: -Number.MAX_VALUE },
-    heapTotal: { avg: 0, min: Number.MAX_VALUE, max: -Number.MAX_VALUE },
-    heapUsed: { avg: 0, min: Number.MAX_VALUE, max: -Number.MAX_VALUE },
-    external: { avg: 0, min: Number.MAX_VALUE, max: -Number.MAX_VALUE }
+    rss: initMemoryValue(),
+    heapTotal: initMemoryValue(),
+    heapUsed: initMemoryValue(),
+    external: initMemoryValue()
   }
+  const start = process.memoryUsage()
   let count = 0
   return {
     track () {
@@ -63,46 +40,95 @@ function createMemTracker () {
       minMax(stats.external, usage.external - start.external)
       count += 1
     },
-    stats () {
-      avg(stats.rss, count)
-      avg(stats.heapTotal, count)
-      avg(stats.heapUsed, count)
-      avg(stats.external, count)
+    final () {
+      const end = process.memoryUsage()
+      finalMemory(stats.rss, count, start.rss, end.rss)
+      finalMemory(stats.heapTotal, count, start.heapTotal, end.heapTotal)
+      finalMemory(stats.heapUsed, count, start.heapUsed, end.heapUsed)
+      finalMemory(stats.external, count, start.external, end.external)
       return stats
     }
   }
 }
 
-async function clear () {
+function createCpuTracker () {
+  const first = {
+    time: 0,
+    cpu: {
+      user: 0,
+      system: 0
+    }
+  }
+  const repeat = {
+    time: 0,
+    cpu: {
+      user: 0,
+      system: 0
+    }
+  }
+  let start = null
+  let cpu = null
+
+  function reset () {
+    start = process.hrtime()
+    cpu = process.cpuUsage()
+  }
+
+  function store (entry) {
+    const diff = process.hrtime(start)
+    const cpuMiS = process.cpuUsage(cpu)
+    entry.time = diff[0] * 1e3 + diff[1] * 1e-6
+    entry.cpu.user = cpuMiS.user / 1000
+    entry.cpu.system = cpuMiS.system / 1000
+  }
+
+  return {
+    first,
+    repeat,
+    beforeFirst: reset,
+    beforeRepeat () {
+      store(first)
+      reset()
+    },
+    end (count) {
+      store(repeat)
+      repeat.time = repeat.time / count
+      repeat.cpu.user = repeat.cpu.user / count
+      repeat.cpu.system = repeat.cpu.system / count
+    }
+  }
+}
+
+async function cleanSlate () {
   global.gc()
-  await sleep(100) 
+  await sleep(100)
 }
 
 async function runOne (count, name, once, cleanup) {
-  await clear()
+  // Memory for the test should be allocated in this block
+  const cpu = createCpuTracker()
   const mem = createMemTracker()
-  mem.track()
-  let end = start()
+  let i = 0
+  // No more variable declarations
+  await cleanSlate()
+  cpu.beforeFirst()
   await once()
   mem.track()
-  const first = end()
-  end = start()
-  for (let i = 0; i < count; i++) {
+  cpu.beforeRepeat()
+  for (; i < count; i++) {
     await once()
     mem.track()
-    global.gc()
   }
-  const repeat = devideInfo(end(), count)
-  mem.track()
-  if (cleanup) await cleanup()
-  global.gc()
-  await sleep(100)
-  mem.track()
+  cpu.end(count)
+  if (cleanup) {
+    await cleanup()
+  }
+  await cleanSlate()
   return {
     name,
-    mem: mem.stats(),
-    first,
-    repeat
+    mem: mem.final(),
+    first: cpu.first,
+    repeat: cpu.repeat
   }
 }
 
@@ -111,15 +137,18 @@ function sleep (time) {
 }
 
 function renderMs (time) {
-  return `${Math.round(time * 10) / 10}ms`
+  return `${Math.round(time * 100) / 100}ms`
 }
 
 function renderMsDiff (a, b) {
-  let perc = 100 - Math.round(100 / a * b)
-  let verb = 'faster'
-  if (perc < 0) {
-    perc *= -1
+  let perc
+  let verb
+  if (a < b) {
     verb = 'slower'
+    perc = Math.round(100 / a * b) - 100
+  } else {
+    verb = 'faster'
+    perc = Math.round(100 / b * a)
   }
   return `${perc}% ${verb}`
 }
@@ -128,52 +157,84 @@ const KILO = 1024
 const MEGA = 1024 * 1024
 
 function renderBytes (bytes) {
+  const prefix = bytes < 0 ? '-' : ''
+  bytes = Math.abs(bytes)
   if (bytes > MEGA) {
-    return `${Math.round(bytes / MEGA * 10) / 10}Mb`
+    return `${prefix}${Math.round(bytes / MEGA * 10) / 10}Mb`
   }
   if (bytes > KILO) {
-    return `${Math.round(bytes / KILO * 10) / 10}Kb`
+    return `${prefix}${Math.round(bytes / KILO * 10) / 10}Kb`
   }
-  return `${Math.round(bytes)}b`
+  return `${prefix}${Math.round(bytes)}b`
 }
 
 function renderMemEntry (entry) {
-  const diffMax = Math.abs(entry.max - entry.avg)
-  const diffMin = Math.abs(entry.avg - entry.min)
-  return `${renderBytes(entry.max)}`
+  return `${renderBytes(entry.max)} (avg. ${renderBytes(entry.avg)})`
+}
+
+const ops = [
+  cmd => {
+    const { promisify } = require('util')
+    const execAsync = promisify(require('child_process').exec)
+    return {
+      name: 'node.js',
+      op: () => execAsync(cmd)
+    }
+  },
+  cmd => {
+    const { exec: execBgAsync, close: closeAsync } = require('./promises.js')
+    return {
+      name: 'bgback',
+      op: () => execBgAsync(cmd),
+      end: closeAsync
+    }
+  }
+]
+
+function runOneInClusterByIndex (id) {
+  return new Promise((resolve, reject) => {
+    const fork = cluster.fork({ PERF_ID: id })
+    fork.on('exit', reject)
+    fork.on('message', resolve)
+  })
 }
 
 async function run (cmd, count) {
-  await runOne(count, 'bgback', () => execBgAsync(cmd), closeAsync)
-  await runOne(count, 'node.js', () => execAsync(cmd))
+  const entries = []
+  if (cluster.isMaster) {
+    for (let i = 0; i < ops.length; i++) {
+      entries[i] = await runOneInClusterByIndex(i)
+    }
 
-  const a = await runOne(count, 'node.js', () => execAsync(cmd))
-  const b = await runOne(count, 'bgback', () => execBgAsync(cmd), closeAsync)
-  const entries = [a, b]
-
-  return `
-| "${cmd}" - ${count} runs |${row(entry => ` ${entry.name} `)}|   |
-|---------------|${row(entry => `-${new Array(entry.name.length).join('-')}--`)}|---|
-| startup       |${renderTime(entry => entry.first.time)}|
-| repeat call   |${renderTime(entry => entry.repeat.time)}|
-| cpu.user      |${renderTime(entry => entry.repeat.cpu.user)}|
-| cpu.system    |${renderTime(entry => entry.repeat.cpu.system)}|
-| mem.rss       |${renderMem(entry => entry.mem.rss)}|
-| mem.heapTotal |${renderMem(entry => entry.mem.heapTotal)}|
-| mem.heapUsed  |${renderMem(entry => entry.mem.heapUsed)}|
-| mem.external  |${renderMem(entry => entry.mem.external)}|
-`
+    return `
+| "${cmd}" - ${count} runs on node-${process.version}(${process.platform}) |${row(entry => ` ${entry.name} `)}| notes |
+|-----------------|${row(entry => `-${new Array(entry.name.length).join('-')}--`)}|---|
+| startup         |${renderTime(entry => entry.first.time)}- The startup is naturally slower as it does a little more. |
+| repeat response |${renderTime(entry => entry.repeat.time)}- But repeat calls are significantly faster, |
+| repeat user     |${renderTime(entry => entry.repeat.cpu.user)}- with part of it coming from the reduced user execution time ... |
+| repeat system   |${renderTime(entry => entry.repeat.cpu.system)}- ... and a significantly reduced system execution time. |
+| rss             |${renderMem(entry => entry.mem.rss)} With a significantly lower rss memory allocation (which is stable even with more calls)  |
+| heap total      |${renderMem(entry => entry.mem.heapTotal)} The node.js version also fills up the heap a lot quicker to a avg. 32Mb use at 10000 execs while the bgback version needs around 20000 to get there. |
+| heap used       |${renderMem(entry => entry.mem.heapUsed)} The difference in size can be attributed to the additional code loaded.  This will slightly grow with number of calls (~20kb per 5000 calls). Reason is unclear but consistent for both the node.js and bgback version. |
+| c-memory inc.   |${renderMem(entry => entry.mem.external)} The C++ memory can be negative as some initial c memory is cleared. |
+    `
+  } else {
+    const op = ops[parseInt(process.env.PERF_ID, 10)](cmd)
+    const data = await runOne(count, op.name, op.op, op.end)
+    await new Promise(resolve => process.send(data, resolve))
+    process.exit()
+  }
 
   function renderTime (fn) {
-    const a1 = fn(a)
-    const b1 = fn(b)
+    const a1 = fn(entries[0])
+    const b1 = fn(entries[1])
     return ` ${renderMs(a1)} | ${renderMs(b1)} | ${renderMsDiff(a1, b1)} `
   }
 
   function renderMem (fn) {
-    const a1 = fn(a)
-    const b1 = fn(b)
-    return ` ${renderMemEntry(a1)} | ${renderMemEntry(b1)} | `
+    const a1 = fn(entries[0])
+    const b1 = fn(entries[1])
+    return ` ${renderMemEntry(a1)} | ${renderMemEntry(b1)} |`
   }
 
   function row (fn) {
@@ -181,7 +242,9 @@ async function run (cmd, count) {
   }
 }
 
-run('echo hi', 500)
+run('echo hi', 2000)
+// run('cat package-lock.json', 1000)
+// run('networksetup -listnetworkserviceorder', 1000)
   .then((data) => {
     console.log(data)
   }, err => {

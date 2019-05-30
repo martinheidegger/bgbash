@@ -17,18 +17,16 @@ Starting a child process using `spawn` or `exec` will create a new instance of `
 
 ### Performance comparison
 
-The startup time is naturally accompanied with some overheads but repeat calls are up to 70% faster or create 1/3rd of the overhead. It's memory consumption is not significantly less but the memory usage fluctuates less which is a good indicator for fewer garbage-collector cycles and a lower long-term energy consumption.
-
-| "echo hi" - 500 runs | node.js | bgback |   |
-|---------------|---------|--------|---|
-| startup       | 13.9ms | 21.4ms | 54% slower |
-| repeat call   | 9.7ms | 9ms | 7% faster |
-| cpu.user      | 9.8ms | 9.5ms | 3% faster |
-| cpu.system    | 2ms | 0.6ms | 72% faster |
-| mem.rss       | 23.7Mb (+1.3Mb/-3.1Mb) | 25.3Mb (+43Kb/-285Kb) | |
-| mem.heapTotal | 15.1Mb (+1.1Mb/-5.4Mb) | 16.2Mb (+0b/-0b) | |
-| mem.heapUsed  | 3.9Mb (+248.7Kb/-334.3Kb) | 4Mb (+83.9Kb/-174Kb) | |
-| mem.external  | 8.2Kb (+8Kb/-66b) | 8.1Kb (+65b/-5b) | |
+| "echo hi" - 2000 runs on node-v10.12.0(darwin) | node.js | bgback | notes |
+|-----------------|---------|--------|---|
+| startup         | 10.98ms | 16.05ms | 46% slower - The startup is naturally slower as it does a little more. |
+| repeat response | 4.91ms | 1.96ms | 251% faster - But repeat calls are significantly faster, |
+| repeat user     | 1.31ms | 0.95ms | 137% faster - with part of it coming from the reduced user execution time ... |
+| repeat system   | 0.64ms | 0.04ms | 1457% faster - ... and a significantly reduced system execution time. |
+| rss             | 37.9Mb (avg. 19.8Mb) | 9.9Mb (avg. 6.6Mb) | With a significantly lower rss memory allocation (which is stable even with more calls)  |
+| heap total      | 37.5Mb (avg. 21.4Mb) | 6Mb (avg. 3.2Mb) | The node.js version also fills up the heap a lot quicker to a avg. 32Mb use at 10000 execs while the bgback version needs around 20000 to get there. |
+| heap used       | 19.5Mb (avg. 6.3Mb) | 4.1Mb (avg. 1.4Mb) | The difference in size can be attributed to the additional code loaded.  This will slightly grow with number of calls (~20kb per 5000 calls). Reason is unclear but consistent for both the node.js and bgback version. |
+| c-memory inc.   | 8.6Kb (avg. -201b) | 170b (avg. -7.8Kb) | The C++ memory can be negative as some initial c memory is cleared. |
 
 _Note:_ This data is compiled using the [`./perf.js`](./perf.js) script.
 
