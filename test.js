@@ -22,6 +22,13 @@ function sleep (ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+test('big output', async t => {
+  t.deepEquals(await exec('cat package-lock.json'), {
+    stdout: await readFile('package-lock.json', 'utf-8'),
+    stderr: ''
+  })
+})
+
 test('simple command', async t => {
   t.deepEquals(await exec('echo hi'), out('hi'))
 })

@@ -160,7 +160,7 @@ class BashProcess extends ChildProcess {
         return unlock(this.destructed)
       }
       this._setCurrent(unlock, encoding, timeout)
-      this._stdin.write(`${cmd}\n`)
+      this._stdin.write(`${cmd};\n`)
     }, cb)
   }
   close (cb) {
