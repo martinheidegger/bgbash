@@ -182,8 +182,10 @@ class BashProcess extends ChildProcess {
       }
       this._toggleTracker(true)
       if (result.code !== 0) {
-        err = new Error(`Exit code: ${result.code}`)
+        err = new Error(`Exit code: ${result.code}:\n${result.stderr}`)
         err.code = result.code
+        err.stderr = result.stderr
+        err.stdout = result.stdout
       }
       if (encoding === undefined) {
         encoding = 'utf8'
