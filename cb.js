@@ -223,8 +223,18 @@ function _exec (cmd, cwd, envPairs, encoding, timeout, cb) {
 }
 
 let procByEnv = {}
+let warnOnce = true
 
 function exec (cmd, opts, cb) {
+  if (process.platform === 'win32') {
+    return setImmediate(cb, new Error('Windows platform is not supported. Pull Requests warmly welcome.'))
+  }
+  if (warnOnce && !(process.platform === 'darwin' || process.platform === 'linux')) {
+    if (warnOnce) {
+      console.warn(`WARNING: bgback has not been tested on the ${process.platform} platform.`)
+      warnOnce = false
+    }
+  }
   let envPairs = opts && opts.envPairs
   if (!envPairs) {
     envPairs = createEnvPairs((opts && opts.env) || process.env)

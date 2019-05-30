@@ -18,5 +18,3 @@ jobs:
         - ./cc-test-reporter before-build
       after_script:
         - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
-    - os: windows
-      filter_secrets: false
