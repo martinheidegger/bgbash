@@ -3,8 +3,17 @@ const { ChildProcess } = require('child_process')
 const { sep, resolve } = require('path')
 const { createLockCb } = require('flexlock-cb')
 const { readFile, createWriteStream } = require('fs')
+const isNodeIssue18446 = process.platform !== 'darwin' // https://github.com/nodejs/node/issues/18446
 const once = require('once')
 const assert = require('assert')
+const args = [
+  // We could take process.env.SHELL instead, but the ./index.sh has not been tested with all possible other shells.
+  // We can also not use /bin/sh as the "eval" command used would then fallback to sh semantics
+  '/bin/bash',
+  '--noprofile', // No bash_profile or other startup should be loaded, skewing the output.
+  `${__dirname}${sep}index${isNodeIssue18446 ? '_node_issue_18446' : ''}.sh`
+]
+const stdio = isNodeIssue18446 ? ['ignore', 'pipe', 'pipe'] : 'pipe'
 
 const EMPTY = Buffer.from('')
 
@@ -93,8 +102,14 @@ function collectIOPath (proc, cb) {
   function ondata (chunk) {
     out += chunk.toString()
     const lines = out.split('\n')
-    if (lines.length > 2) {
-      finish(null, { errPath: lines[0], inPath: lines[1] })
+    if (isNodeIssue18446) {
+      if (lines.length > 2) {
+        finish(null, { errPath: lines[0], inPath: lines[1] })
+      }
+    } else {
+      if (lines.length > 1) {
+        finish(null, { errPath: lines[0] })
+      }
     }
   }
 
@@ -128,9 +143,9 @@ class BashProcess extends ChildProcess {
     super()
     this.spawn({
       file: 'bash',
-      args: ['/bin/bash', '--noprofile', `${__dirname}${sep}index.sh`],
+      args,
       envPairs,
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio
     })
     this._destruct = once((err) => {
       this.destructed = err || new Error('Closed.')
@@ -148,7 +163,7 @@ class BashProcess extends ChildProcess {
         return unlock(err)
       }
       const { errPath, inPath } = paths
-      this._stdin = createWriteStream(inPath, { flags: 'a' })
+      this._stdin = inPath === undefined ? this.stdin : createWriteStream(inPath, { flags: 'a' })
       this._stdin.on('error', this._destruct)
       this.errPath = errPath
       unlock()
