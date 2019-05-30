@@ -42,7 +42,7 @@ test('Exit code', async t => {
   t.fail('exit didnt occur')
 })
 
-test('Error output', async t => {
+test('Error output on success is ignored', async t => {
   let res
   try {
     res = await exec('echo hi >&2')
@@ -176,7 +176,7 @@ test('Image buffer', async t => {
   t.equals(Buffer.compare(stdout, data), 0)
 })
 
-test(' results in buffer', async t => {
+test('results in buffer', async t => {
   const { stdout } = await exec('echo hi', { encoding: 'base64' })
   t.ok(stdout, 'hello')
 })
