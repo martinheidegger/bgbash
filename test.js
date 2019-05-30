@@ -37,8 +37,9 @@ test('Exit code', async t => {
   try {
     await exec('bash -c "exit 1"')
   } catch (err) {
-    t.equals(err.code, 1)
+    return t.equals(err.code, 1)
   }
+  t.fail('exit didnt occur')
 })
 
 test('Error output', async t => {
