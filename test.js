@@ -52,6 +52,26 @@ test('Error output on success is ignored', async t => {
   t.deepEquals(res, out(null, null))
 })
 
+test('Error output on error is returned', async t => {
+  try {
+    await exec('echo hi >&2 & bash -c "exit 1"')
+  } catch (err) {
+    t.equals(err.stderr.toString(), 'hi\n')
+    t.equals(err.code, 1)
+    return
+  }
+  t.fail('exit didnt occur')
+})
+
+test('Repeat error output is not appended', async t => {
+  const [a, b] = await Promise.all([
+    exec('echo hi >&2 & bash -c "exit 1"').catch(err => err),
+    exec('echo ho >&2 & bash -c "exit 1"').catch(err => err)
+  ])
+  t.equals(a.stderr.toString(), 'hi\n')
+  t.equals(b.stderr.toString(), 'ho\n')
+})
+
 test('API without callback', async t => {
   execCb('touch ./tmp')
   await close()
