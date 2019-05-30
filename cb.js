@@ -84,20 +84,22 @@ function collectIOPath (proc, cb) {
   proc.stdout.on('data', ondata)
   proc.stderr.on('data', onerr)
 
+  function finish (err, result) {
+    proc.stdout.removeListener('data', ondata)
+    proc.stderr.removeListener('data', onerr)
+    cb(err, result)
+  }
+
   function ondata (chunk) {
     out += chunk.toString()
     const lines = out.split('\n')
     if (lines.length > 2) {
-      proc.stdout.removeListener('data', ondata)
-      proc.stderr.removeListener('data', onerr)
-      cb(null, { errPath: lines[0], inPath: lines[1] })
+      finish(null, { errPath: lines[0], inPath: lines[1] })
     }
   }
 
   function onerr (chunk) {
-    proc.stdout.removeListener('data', ondata)
-    proc.stderr.removeListener('data', onerr)
-    cb(new Error('Unexpected error output: ' + chunk.toString()))
+    finish(new Error('Unexpected error output: ' + chunk.toString()))
   }
 }
 
